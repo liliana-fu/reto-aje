@@ -6,3 +6,10 @@ node_modules
 # CDK asset staging directory
 .cdk.staging
 cdk.out
+out
+
+.env
+google-oauth.json
+cdk.out/
+.env.*
+!.env.example

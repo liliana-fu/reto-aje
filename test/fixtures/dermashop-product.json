@@ -1,0 +1,27 @@
+{
+ "id": 7896112988326,
+ "title": "Fotoprotector Eucerin Oil Control SPF 50 50 ml",
+ "handle": "eucerin-sun-gel-crema-oil-control-toque-seco-spf50-50-ml",
+ "vendor": "Eucerin",
+ "type": "",
+ "tags": [
+  "color:Sin color",
+  "Facial",
+  "Piel Mixta A Grasa",
+  "Por Necesidad",
+  "Por Tipo De Piel",
+  "Por Tipo De Producto",
+  "Protección Solar"
+ ],
+ "price": 11990,
+ "available": true,
+ "variants": [
+  {
+   "id": 44823984701606,
+   "title": "Default Title",
+   "price": 11990,
+   "available": true,
+   "sku": "1000235"
+  }
+ ]
+}

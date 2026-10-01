@@ -1,0 +1,860 @@
+Description: AJE - Pipeline serverless de monitoreo de precios de competidores
+Resources:
+  StorageDataBucketB1B922FA:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+          - ServerSideEncryptionByDefault:
+              SSEAlgorithm: AES256
+      LifecycleConfiguration:
+        Rules:
+          - ExpirationInDays: 90
+            Id: expire-90-days
+            Status: Enabled
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
+      Tags:
+        - Key: aws-cdk:auto-delete-objects
+          Value: "true"
+        - Key: Owner
+          Value: Liliana
+        - Key: Project
+          Value: price-monitor
+    UpdateReplacePolicy: Delete
+    DeletionPolicy: Delete
+    Metadata:
+      aws:cdk:path: PriceMonitorStack/Storage/DataBucket/Resource
+  StorageDataBucketPolicyC997B69E:
+    Type: AWS::S3::BucketPolicy
+    Properties:
+      Bucket:
+        Ref: StorageDataBucketB1B922FA
+      PolicyDocument:
+        Statement:
+          - Action: s3:*
+            Condition:
+              Bool:
+                aws:SecureTransport: "false"
+            Effect: Deny
+            Principal:
+              AWS: "*"
+            Resource:
+              - Fn::GetAtt:
+                  - StorageDataBucketB1B922FA
+                  - Arn
+              - Fn::Join:
+                  - ""
+                  - - Fn::GetAtt:
+                        - StorageDataBucketB1B922FA
+                        - Arn
+                    - /*
+          - Action:
+              - s3:DeleteObject*
+              - s3:GetBucket*
+              - s3:List*
+              - s3:PutBucketPolicy
+            Effect: Allow
+            Principal:
+              AWS:
+                Fn::GetAtt:
+                  - CustomS3AutoDeleteObjectsCustomResourceProviderRole3B1BD092
+                  - Arn
+            Resource:
+              - Fn::GetAtt:
+                  - StorageDataBucketB1B922FA
+                  - Arn
+              - Fn::Join:
+                  - ""
+                  - - Fn::GetAtt:
+                        - StorageDataBucketB1B922FA
+                        - Arn
+                    - /*
+        Version: "2012-10-17"
+    Metadata:
+      aws:cdk:path: PriceMonitorStack/Storage/DataBucket/Policy/Resource
+  StorageDataBucketAutoDeleteObjectsCustomResource4BB14FB3:
+    Type: Custom::S3AutoDeleteObjects
+    Properties:
+      ServiceToken:
+        Fn::GetAtt:
+          - CustomS3AutoDeleteObjectsCustomResourceProviderHandler9D90184F
+          - Arn
+      BucketName:
+        Ref: StorageDataBucketB1B922FA
+    DependsOn:
+      - StorageDataBucketPolicyC997B69E
+    UpdateReplacePolicy: Delete
+    DeletionPolicy: Delete
+    Metadata:
+      aws:cdk:path: PriceMonitorStack/Storage/DataBucket/AutoDeleteObjectsCustomResource/Default
+  StorageStoresConfig8C789210:
+    Type: AWS::SSM::Parameter
+    Properties:
+      Description: Tiendas, URLs y parámetros de extracción del monitor de precios
+      Name: /price-monitor/stores-config
+      Tags:
+        Owner: Liliana
+        Project: price-monitor
+      Tier: Standard
+      Type: String
+      Value: '{"stores":[{"id":"dermashop","name":"Dermashop","baseUrl":"https://dermashop.pe/"},{"id":"florayfauna","name":"Flora y Fauna","baseUrl":"https://www.florayfauna.pe/cuidado-personal/cuidado-corporal","params":{"igvRate":0.18}},{"id":"inkafarma","name":"Inkafarma","baseUrl":"https://inkafarma.pe/categoria/dermatologia-cosmetica","params":{"algoliaAppId":"15W622LAQ4","algoliaApiKey":"3ba15abece13b00b123c5501680690f7","algoliaIndex":"products"}}],"products":[{"grupo":"Protector solar facial","items":[{"store":"florayfauna","url":"https://www.florayfauna.pe/bloqueador-solar-mineral-diario-spf-30-badger/p","contenido":{"valor":118,"unidad":"ml"}},{"store":"dermashop","url":"https://dermashop.pe/collections/proteccion-solar-facial/products/eucerin-sun-gel-crema-oil-control-toque-seco-spf50-50-ml"},{"store":"inkafarma","url":"https://inkafarma.pe/producto/protector-solar-eucerin-oil-control-toque-seco-fps/009064"}]}]}'
+    Metadata:
+      aws:cdk:path: PriceMonitorStack/Storage/StoresConfig/Resource
+  CustomS3AutoDeleteObjectsCustomResourceProviderRole3B1BD092:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Action: sts:AssumeRole
+            Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+      ManagedPolicyArns:
+        - Fn::Sub: arn:${AWS::Partition}:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+    Metadata:
+      aws:cdk:path: PriceMonitorStack/Custom::S3AutoDeleteObjectsCustomResourceProvider/Role
+  CustomS3AutoDeleteObjectsCustomResourceProviderHandler9D90184F:
+    Type: AWS::Lambda::Function
+    Properties:
+      Code:
+        S3Bucket:
+          Fn::Sub: cdk-hnb659fds-assets-${AWS::AccountId}-us-east-1
+        S3Key: faa95a81ae7d7373f3e1f242268f904eb748d8d0fdd306e8a6fe515a1905a7d6.zip
+      Timeout: 900
+      MemorySize: 128
+      Handler: index.handler
+      Role:
+        Fn::GetAtt:
+          - CustomS3AutoDeleteObjectsCustomResourceProviderRole3B1BD092
+          - Arn
+      Runtime: nodejs24.x
+      Description:
+        Fn::Join:
+          - ""
+          - - "Lambda function for auto-deleting objects in "
+            - Ref: StorageDataBucketB1B922FA
+            - " S3 bucket."
+    DependsOn:
+      - CustomS3AutoDeleteObjectsCustomResourceProviderRole3B1BD092
+    Metadata:
+      aws:cdk:path: PriceMonitorStack/Custom::S3AutoDeleteObjectsCustomResourceProvider/Handler
+      aws:asset:path: asset.faa95a81ae7d7373f3e1f242268f904eb748d8d0fdd306e8a6fe515a1905a7d6
+      aws:asset:property: Code
+  NotificationTopicC6E25629:
+    Type: AWS::SNS::Topic
+    Properties:
+      DisplayName: AJE Price Monitor
+      Tags:
+        - Key: Owner
+          Value: Liliana
+        - Key: Project
+          Value: price-monitor
+      TopicName: price-monitor-notifications
+    Metadata:
+      aws:cdk:path: PriceMonitorStack/Notification/Topic/Resource
+  NotificationTopicoscartoledoajegroupcom5ACD903E:
+    Type: AWS::SNS::Subscription
+    Properties:
+      Endpoint: oscar.toledo@ajegroup.com
+      Protocol: email
+      TopicArn:
+        Ref: NotificationTopicC6E25629
+    Metadata:
+      aws:cdk:path: PriceMonitorStack/Notification/Topic/oscar.toledo@ajegroup.com/Resource
+  NotificationTopiclilianafuyegmailcomE9AE5096:
+    Type: AWS::SNS::Subscription
+    Properties:
+      Endpoint: lilianafuye@gmail.com
+      Protocol: email
+      TopicArn:
+        Ref: NotificationTopicC6E25629
+    Metadata:
+      aws:cdk:path: PriceMonitorStack/Notification/Topic/lilianafuye@gmail.com/Resource
+  ScrapingScraperFnLogsC6BC26F4:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      RetentionInDays: 14
+      Tags:
+        - Key: Owner
+          Value: Liliana
+        - Key: Project
+          Value: price-monitor
+    UpdateReplacePolicy: Delete
+    DeletionPolicy: Delete
+    Metadata:
+      aws:cdk:path: PriceMonitorStack/Scraping/ScraperFnLogs/Resource
+  ScrapingScraperFnServiceRole09852416:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Statement:
+          - Action: sts:AssumeRole
+            Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+        Version: "2012-10-17"
+      ManagedPolicyArns:
+        - Fn::Join:
+            - ""
+            - - "arn:"
+              - Ref: AWS::Partition
+              - :iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+      Tags:
+        - Key: Owner
+          Value: Liliana
+        - Key: Project
+          Value: price-monitor
+    Metadata:
+      aws:cdk:path: PriceMonitorStack/Scraping/ScraperFn/ServiceRole/Resource
+  ScrapingScraperFnServiceRoleDefaultPolicy40B58FB7:
+    Type: AWS::IAM::Policy
+    Properties:
+      PolicyDocument:
+        Statement:
+          - Action:
+              - xray:PutTelemetryRecords
+              - xray:PutTraceSegments
+            Effect: Allow
+            Resource: "*"
+          - Action:
+              - s3:Abort*
+              - s3:PutObject
+              - s3:PutObjectLegalHold
+              - s3:PutObjectRetention
+              - s3:PutObjectTagging
+              - s3:PutObjectVersionTagging
+            Effect: Allow
+            Resource:
+              Fn::Join:
+                - ""
+                - - Fn::GetAtt:
+                      - StorageDataBucketB1B922FA
+                      - Arn
+                  - /raw/*
+        Version: "2012-10-17"
+      PolicyName: ScrapingScraperFnServiceRoleDefaultPolicy40B58FB7
+      Roles:
+        - Ref: ScrapingScraperFnServiceRole09852416
+    Metadata:
+      aws:cdk:path: PriceMonitorStack/Scraping/ScraperFn/ServiceRole/DefaultPolicy/Resource
+  ScrapingScraperFn9C84BBC5:
+    Type: AWS::Lambda::Function
+    Properties:
+      Architectures:
+        - arm64
+      Code:
+        S3Bucket:
+          Fn::Sub: cdk-hnb659fds-assets-${AWS::AccountId}-us-east-1
+        S3Key: 36639f9661ed134c10033c5f10692d256991f4eaa500aafb01f71a8488ddc2a3.zip
+      Description: Extrae precio y stock de una tienda y guarda raw/normalizado en S3
+      Environment:
+        Variables:
+          POWERTOOLS_SERVICE_NAME: price-monitor-scraper
+          POWERTOOLS_LOG_LEVEL: INFO
+          NODE_OPTIONS: --enable-source-maps
+          BUCKET_NAME:
+            Ref: StorageDataBucketB1B922FA
+      Handler: index.handler
+      LoggingConfig:
+        LogFormat: JSON
+        LogGroup:
+          Ref: ScrapingScraperFnLogsC6BC26F4
+      MemorySize: 512
+      Role:
+        Fn::GetAtt:
+          - ScrapingScraperFnServiceRole09852416
+          - Arn
+      Runtime: nodejs22.x
+      Tags:
+        - Key: Owner
+          Value: Liliana
+        - Key: Project
+          Value: price-monitor
+      Timeout: 60
+      TracingConfig:
+        Mode: Active
+    DependsOn:
+      - ScrapingScraperFnServiceRoleDefaultPolicy40B58FB7
+      - ScrapingScraperFnServiceRole09852416
+    Metadata:
+      aws:cdk:path: PriceMonitorStack/Scraping/ScraperFn/Resource
+      aws:asset:path: asset.36639f9661ed134c10033c5f10692d256991f4eaa500aafb01f71a8488ddc2a3
+      aws:asset:is-bundled: true
+      aws:asset:property: Code
+  AlertingScrapingErrorsDlq34A02BD3:
+    Type: AWS::SQS::Queue
+    Properties:
+      MessageRetentionPeriod: 1209600
+      QueueName: scraping-errors-dlq
+      SqsManagedSseEnabled: true
+      Tags:
+        - Key: Owner
+          Value: Liliana
+        - Key: Project
+          Value: price-monitor
+      VisibilityTimeout: 180
+    UpdateReplacePolicy: Delete
+    DeletionPolicy: Delete
+    Metadata:
+      aws:cdk:path: PriceMonitorStack/Alerting/ScrapingErrorsDlq/Resource
+  AlertingScrapingErrorsDlqPolicyBD198581:
+    Type: AWS::SQS::QueuePolicy
+    Properties:
+      PolicyDocument:
+        Statement:
+          - Action: sqs:*
+            Condition:
+              Bool:
+                aws:SecureTransport: "false"
+            Effect: Deny
+            Principal:
+              AWS: "*"
+            Resource:
+              Fn::GetAtt:
+                - AlertingScrapingErrorsDlq34A02BD3
+                - Arn
+        Version: "2012-10-17"
+      Queues:
+        - Ref: AlertingScrapingErrorsDlq34A02BD3
+    Metadata:
+      aws:cdk:path: PriceMonitorStack/Alerting/ScrapingErrorsDlq/Policy/Resource
+  AlertingErrorNotifierFnLogs2DA4DB74:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      RetentionInDays: 14
+      Tags:
+        - Key: Owner
+          Value: Liliana
+        - Key: Project
+          Value: price-monitor
+    UpdateReplacePolicy: Delete
+    DeletionPolicy: Delete
+    Metadata:
+      aws:cdk:path: PriceMonitorStack/Alerting/ErrorNotifierFnLogs/Resource
+  AlertingErrorNotifierFnServiceRole0E30142D:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Statement:
+          - Action: sts:AssumeRole
+            Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+        Version: "2012-10-17"
+      ManagedPolicyArns:
+        - Fn::Join:
+            - ""
+            - - "arn:"
+              - Ref: AWS::Partition
+              - :iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+      Tags:
+        - Key: Owner
+          Value: Liliana
+        - Key: Project
+          Value: price-monitor
+    Metadata:
+      aws:cdk:path: PriceMonitorStack/Alerting/ErrorNotifierFn/ServiceRole/Resource
+  AlertingErrorNotifierFnServiceRoleDefaultPolicy539ABB37:
+    Type: AWS::IAM::Policy
+    Properties:
+      PolicyDocument:
+        Statement:
+          - Action:
+              - xray:PutTelemetryRecords
+              - xray:PutTraceSegments
+            Effect: Allow
+            Resource: "*"
+          - Action:
+              - sqs:ChangeMessageVisibility
+              - sqs:DeleteMessage
+              - sqs:GetQueueAttributes
+              - sqs:GetQueueUrl
+              - sqs:ReceiveMessage
+            Effect: Allow
+            Resource:
+              Fn::GetAtt:
+                - AlertingScrapingErrorsDlq34A02BD3
+                - Arn
+          - Action: sns:Publish
+            Effect: Allow
+            Resource:
+              Ref: NotificationTopicC6E25629
+        Version: "2012-10-17"
+      PolicyName: AlertingErrorNotifierFnServiceRoleDefaultPolicy539ABB37
+      Roles:
+        - Ref: AlertingErrorNotifierFnServiceRole0E30142D
+    Metadata:
+      aws:cdk:path: PriceMonitorStack/Alerting/ErrorNotifierFn/ServiceRole/DefaultPolicy/Resource
+  AlertingErrorNotifierFnBC078359:
+    Type: AWS::Lambda::Function
+    Properties:
+      Architectures:
+        - arm64
+      Code:
+        S3Bucket:
+          Fn::Sub: cdk-hnb659fds-assets-${AWS::AccountId}-us-east-1
+        S3Key: 64f060fdf0ee2464fc7b9fa287ba4b779641e0dba526d23f99da462e1403e77b.zip
+      Description: Lee la DLQ de scraping y publica un correo legible en SNS (eventType=ERROR)
+      Environment:
+        Variables:
+          POWERTOOLS_SERVICE_NAME: price-monitor-error-notifier
+          POWERTOOLS_LOG_LEVEL: INFO
+          NODE_OPTIONS: --enable-source-maps
+          TOPIC_ARN:
+            Ref: NotificationTopicC6E25629
+      Handler: index.handler
+      LoggingConfig:
+        LogFormat: JSON
+        LogGroup:
+          Ref: AlertingErrorNotifierFnLogs2DA4DB74
+      MemorySize: 256
+      Role:
+        Fn::GetAtt:
+          - AlertingErrorNotifierFnServiceRole0E30142D
+          - Arn
+      Runtime: nodejs22.x
+      Tags:
+        - Key: Owner
+          Value: Liliana
+        - Key: Project
+          Value: price-monitor
+      Timeout: 30
+      TracingConfig:
+        Mode: Active
+    DependsOn:
+      - AlertingErrorNotifierFnServiceRoleDefaultPolicy539ABB37
+      - AlertingErrorNotifierFnServiceRole0E30142D
+    Metadata:
+      aws:cdk:path: PriceMonitorStack/Alerting/ErrorNotifierFn/Resource
+      aws:asset:path: asset.64f060fdf0ee2464fc7b9fa287ba4b779641e0dba526d23f99da462e1403e77b
+      aws:asset:is-bundled: true
+      aws:asset:property: Code
+  AlertingErrorNotifierFnSqsEventSourcePriceMonitorStackAlertingScrapingErrorsDlq5366B0DD76EFF4C7:
+    Type: AWS::Lambda::EventSourceMapping
+    Properties:
+      BatchSize: 10
+      EventSourceArn:
+        Fn::GetAtt:
+          - AlertingScrapingErrorsDlq34A02BD3
+          - Arn
+      FunctionName:
+        Ref: AlertingErrorNotifierFnBC078359
+      FunctionResponseTypes:
+        - ReportBatchItemFailures
+      Tags:
+        - Key: Owner
+          Value: Liliana
+        - Key: Project
+          Value: price-monitor
+    Metadata:
+      aws:cdk:path: PriceMonitorStack/Alerting/ErrorNotifierFn/SqsEventSource:PriceMonitorStackAlertingScrapingErrorsDlq5366B0DD/Resource
+  AlertingDlqMessagesAlarm7F4A7BB4:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmActions:
+        - Ref: NotificationTopicC6E25629
+      AlarmDescription: Hay mensajes visibles en scraping-errors-dlq (errores de extracción sin procesar)
+      AlarmName: price-monitor-dlq-messages-visible
+      ComparisonOperator: GreaterThanThreshold
+      Dimensions:
+        - Name: QueueName
+          Value:
+            Fn::GetAtt:
+              - AlertingScrapingErrorsDlq34A02BD3
+              - QueueName
+      EvaluationPeriods: 1
+      MetricName: ApproximateNumberOfMessagesVisible
+      Namespace: AWS/SQS
+      Period: 60
+      Statistic: Maximum
+      Tags:
+        - Key: Owner
+          Value: Liliana
+        - Key: Project
+          Value: price-monitor
+      Threshold: 0
+      TreatMissingData: notBreaching
+    Metadata:
+      aws:cdk:path: PriceMonitorStack/Alerting/DlqMessagesAlarm/Resource
+  ReportingReportGeneratorFnLogs062A1184:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      RetentionInDays: 14
+      Tags:
+        - Key: Owner
+          Value: Liliana
+        - Key: Project
+          Value: price-monitor
+    UpdateReplacePolicy: Delete
+    DeletionPolicy: Delete
+    Metadata:
+      aws:cdk:path: PriceMonitorStack/Reporting/ReportGeneratorFnLogs/Resource
+  ReportingReportGeneratorFnServiceRoleC03FCE20:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Statement:
+          - Action: sts:AssumeRole
+            Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+        Version: "2012-10-17"
+      ManagedPolicyArns:
+        - Fn::Join:
+            - ""
+            - - "arn:"
+              - Ref: AWS::Partition
+              - :iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+      Tags:
+        - Key: Owner
+          Value: Liliana
+        - Key: Project
+          Value: price-monitor
+    Metadata:
+      aws:cdk:path: PriceMonitorStack/Reporting/ReportGeneratorFn/ServiceRole/Resource
+  ReportingReportGeneratorFnServiceRoleDefaultPolicyB3703127:
+    Type: AWS::IAM::Policy
+    Properties:
+      PolicyDocument:
+        Statement:
+          - Action:
+              - xray:PutTelemetryRecords
+              - xray:PutTraceSegments
+            Effect: Allow
+            Resource: "*"
+          - Action:
+              - s3:GetBucket*
+              - s3:GetObject*
+              - s3:List*
+            Effect: Allow
+            Resource:
+              - Fn::GetAtt:
+                  - StorageDataBucketB1B922FA
+                  - Arn
+              - Fn::Join:
+                  - ""
+                  - - Fn::GetAtt:
+                        - StorageDataBucketB1B922FA
+                        - Arn
+                    - /raw/*
+          - Action:
+              - ssm:DescribeParameters
+              - ssm:GetParameter
+              - ssm:GetParameterHistory
+              - ssm:GetParameters
+            Effect: Allow
+            Resource:
+              - Fn::Join:
+                  - ""
+                  - - "arn:aws:ssm:us-east-1:"
+                    - Ref: AWS::AccountId
+                    - :parameter/price-monitor/drive-root-folder-id
+              - Fn::Join:
+                  - ""
+                  - - "arn:aws:ssm:us-east-1:"
+                    - Ref: AWS::AccountId
+                    - :parameter/price-monitor/google-oauth
+        Version: "2012-10-17"
+      PolicyName: ReportingReportGeneratorFnServiceRoleDefaultPolicyB3703127
+      Roles:
+        - Ref: ReportingReportGeneratorFnServiceRoleC03FCE20
+    Metadata:
+      aws:cdk:path: PriceMonitorStack/Reporting/ReportGeneratorFn/ServiceRole/DefaultPolicy/Resource
+  ReportingReportGeneratorFnE24FC975:
+    Type: AWS::Lambda::Function
+    Properties:
+      Architectures:
+        - arm64
+      Code:
+        S3Bucket:
+          Fn::Sub: cdk-hnb659fds-assets-${AWS::AccountId}-us-east-1
+        S3Key: 15adb7783b1849e271ffc1b26fee238b9ac23bda1d5fe2addbfedf1a48f9694a.zip
+      Description: Genera Precios_Comparativos_YYYY_MM_DD en Google Drive /YYYY/MM/
+      Environment:
+        Variables:
+          POWERTOOLS_SERVICE_NAME: price-monitor-report
+          POWERTOOLS_LOG_LEVEL: INFO
+          NODE_OPTIONS: --enable-source-maps
+          BUCKET_NAME:
+            Ref: StorageDataBucketB1B922FA
+          GOOGLE_OAUTH_PARAM: /price-monitor/google-oauth
+          DRIVE_ROOT_PARAM: /price-monitor/drive-root-folder-id
+      Handler: index.handler
+      LoggingConfig:
+        LogFormat: JSON
+        LogGroup:
+          Ref: ReportingReportGeneratorFnLogs062A1184
+      MemorySize: 512
+      Role:
+        Fn::GetAtt:
+          - ReportingReportGeneratorFnServiceRoleC03FCE20
+          - Arn
+      Runtime: nodejs22.x
+      Tags:
+        - Key: Owner
+          Value: Liliana
+        - Key: Project
+          Value: price-monitor
+      Timeout: 120
+      TracingConfig:
+        Mode: Active
+    DependsOn:
+      - ReportingReportGeneratorFnServiceRoleDefaultPolicyB3703127
+      - ReportingReportGeneratorFnServiceRoleC03FCE20
+    Metadata:
+      aws:cdk:path: PriceMonitorStack/Reporting/ReportGeneratorFn/Resource
+      aws:asset:path: asset.15adb7783b1849e271ffc1b26fee238b9ac23bda1d5fe2addbfedf1a48f9694a
+      aws:asset:is-bundled: true
+      aws:asset:property: Code
+  OrchestrationStateMachineLogs88355EE2:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: /aws/vendedlogs/states/price-monitor
+      RetentionInDays: 14
+      Tags:
+        - Key: Owner
+          Value: Liliana
+        - Key: Project
+          Value: price-monitor
+    UpdateReplacePolicy: Delete
+    DeletionPolicy: Delete
+    Metadata:
+      aws:cdk:path: PriceMonitorStack/Orchestration/StateMachineLogs/Resource
+  OrchestrationStateMachineRoleBF95AA8D:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Statement:
+          - Action: sts:AssumeRole
+            Effect: Allow
+            Principal:
+              Service: states.amazonaws.com
+        Version: "2012-10-17"
+      Tags:
+        - Key: Owner
+          Value: Liliana
+        - Key: Project
+          Value: price-monitor
+    Metadata:
+      aws:cdk:path: PriceMonitorStack/Orchestration/StateMachine/Role/Resource
+  OrchestrationStateMachineRoleDefaultPolicy8565569C:
+    Type: AWS::IAM::Policy
+    Properties:
+      PolicyDocument:
+        Statement:
+          - Action: ssm:getParameter
+            Effect: Allow
+            Resource:
+              Fn::Join:
+                - ""
+                - - "arn:aws:ssm:us-east-1:"
+                  - Ref: AWS::AccountId
+                  - :parameter
+                  - Ref: StorageStoresConfig8C789210
+          - Action: lambda:InvokeFunction
+            Effect: Allow
+            Resource:
+              - Fn::GetAtt:
+                  - ReportingReportGeneratorFnE24FC975
+                  - Arn
+              - Fn::GetAtt:
+                  - ScrapingScraperFn9C84BBC5
+                  - Arn
+              - Fn::Join:
+                  - ""
+                  - - Fn::GetAtt:
+                        - ReportingReportGeneratorFnE24FC975
+                        - Arn
+                    - :*
+              - Fn::Join:
+                  - ""
+                  - - Fn::GetAtt:
+                        - ScrapingScraperFn9C84BBC5
+                        - Arn
+                    - :*
+          - Action: sns:Publish
+            Effect: Allow
+            Resource:
+              Ref: NotificationTopicC6E25629
+          - Action: sqs:SendMessage
+            Effect: Allow
+            Resource:
+              Fn::GetAtt:
+                - AlertingScrapingErrorsDlq34A02BD3
+                - Arn
+          - Action:
+              - logs:CreateLogDelivery
+              - logs:DeleteLogDelivery
+              - logs:DescribeLogGroups
+              - logs:DescribeResourcePolicies
+              - logs:GetLogDelivery
+              - logs:ListLogDeliveries
+              - logs:PutResourcePolicy
+              - logs:UpdateLogDelivery
+              - xray:GetSamplingRules
+              - xray:GetSamplingTargets
+              - xray:PutTelemetryRecords
+              - xray:PutTraceSegments
+            Effect: Allow
+            Resource: "*"
+        Version: "2012-10-17"
+      PolicyName: OrchestrationStateMachineRoleDefaultPolicy8565569C
+      Roles:
+        - Ref: OrchestrationStateMachineRoleBF95AA8D
+    Metadata:
+      aws:cdk:path: PriceMonitorStack/Orchestration/StateMachine/Role/DefaultPolicy/Resource
+  OrchestrationStateMachine4A805A55:
+    Type: AWS::StepFunctions::StateMachine
+    Properties:
+      DefinitionString:
+        Fn::Join:
+          - ""
+          - - "{\"StartAt\":\"Init\",\"States\":{\"Init\":{\"Type\":\"Pass\",\"QueryLanguage\":\"JSONata\",\"Comment\":\"Fija date (YYYY-MM-DD en hora de Lima) y executionArn\",\"Output\":\"{% $merge([$states.input, {\\\"date\\\": $exists($states.input.date) ? $states.input.date : $fromMillis($toMillis($states.context.Execution.StartTime) - 18000000, '[Y0001]-[M01]-[D01]'), \\\"executionArn\\\": $states.context.Execution.Id}]) %}\",\"Next\":\"LoadConfig\"},\"LoadConfig\":{\"Next\":\"ScrapeStores\",\"Type\":\"Task\",\"Comment\":\"Lee tiendas y productos objetivo desde SSM Parameter Store\",\"ResultPath\":\"$.loaded\",\"ResultSelector\":{\"config.$\":\"States.StringToJson($.Parameter.Value)\"},\"Resource\":\"arn:"
+            - Ref: AWS::Partition
+            - :states:::aws-sdk:ssm:getParameter","Parameters":{"Name":"
+            - Ref: StorageStoresConfig8C789210
+            - '"}},"ScrapeStores":{"Type":"Map","Comment":"Una iteración por tienda (MaxConcurrency 3)","ResultPath":"$.results","Next":"GenerateReport","ItemsPath":"$.loaded.config.stores","ItemSelector":{"store.$":"$$.Map.Item.Value","products.$":"$.loaded.config.products","date.$":"$.date","executionArn.$":"$.executionArn"},"ItemProcessor":{"ProcessorConfig":{"Mode":"INLINE"},"StartAt":"ScrapeStore","States":{"ScrapeStore":{"End":true,"Retry":[{"ErrorEquals":["ScrapingError","Sandbox.Timedout","States.Timeout","Lambda.ServiceException","Lambda.AWSLambdaException","Lambda.SdkClientException","Lambda.TooManyRequestsException"],"IntervalSeconds":2,"MaxAttempts":3,"BackoffRate":2}],"Catch":[{"ErrorEquals":["States.ALL"],"ResultPath":"$.error","Next":"SendToDLQ"}],"Type":"Task","Resource":"'
+            - Fn::GetAtt:
+                - ScrapingScraperFn9C84BBC5
+                - Arn
+            - '"},"SendToDLQ":{"Next":"MarkFailed","Catch":[{"ErrorEquals":["States.ALL"],"ResultPath":"$.dlqError","Next":"MarkFailed"}],"Type":"Task","ResultPath":null,"Resource":"arn:'
+            - Ref: AWS::Partition
+            - :states:::sqs:sendMessage","Parameters":{"QueueUrl":"
+            - Ref: AlertingScrapingErrorsDlq34A02BD3
+            - '","MessageBody":{"store.$":"$.store.id","tienda.$":"$.store.name","url.$":"$.store.baseUrl","error.$":"$.error.Error","cause.$":"$.error.Cause","executionArn.$":"$.executionArn","timestamp.$":"$$.State.EnteredTime","date.$":"$.date"}}},"MarkFailed":{"Type":"Pass","Parameters":{"store.$":"$.store.id","status":"ERROR","error.$":"$.error.Error","cause.$":"$.error.Cause"},"End":true}}},"MaxConcurrency":3},"GenerateReport":{"Next":"NotifySuccess","Retry":[{"ErrorEquals":["Lambda.ClientExecutionTimeoutException","Lambda.ServiceException","Lambda.AWSLambdaException","Lambda.SdkClientException"],"IntervalSeconds":2,"MaxAttempts":6,"BackoffRate":2}],"Catch":[{"ErrorEquals":["States.ALL"],"ResultPath":"$.reportError","Next":"NotifyReportFailure"}],"Type":"Task","ResultPath":"$.report","Resource":"'
+            - Fn::GetAtt:
+                - ReportingReportGeneratorFnE24FC975
+                - Arn
+            - '","Parameters":{"date.$":"$.date","executionArn.$":"$.executionArn","stores.$":"$.loaded.config.stores","products.$":"$.loaded.config.products","results.$":"$.results"}},"NotifySuccess":{"QueryLanguage":"JSONata","Next":"Done","Type":"Task","Arguments":{"TopicArn":"'
+            - Ref: NotificationTopicC6E25629
+            - "\",\"Message\":\"{% $join([\\n          'El reporte comparativo de precios se cargó en Google Sheets.',\\n          '',\\n          'Fecha:              ' & $states.input.report.date,\\n          'Estado:             ' & ($count($states.input.report.failedStores) > 0 ? 'COMPLETADO CON ERRORES' : 'COMPLETADO'),\\n          'Tiendas OK:         ' & ($count($states.input.report.okStores) > 0 ? $join($states.input.report.okStores, ', ') : 'ninguna'),\\n          'Tiendas fallidas:   ' & ($count($states.input.report.failedStores) > 0 ? $join($map($states.input.report.failedStores, function($f) { $f.store & ' (' & $f.error & ')' }), '; ') : 'ninguna'),\\n          'Total de productos: ' & $string($states.input.report.totalProducts),\\n          '',\\n          'Google Sheet: ' & $states.input.report.spreadsheetUrl,\\n          '',\\n          'Ejecución: ' & $states.input.executionArn\\n        ], '\\\\n') %}\",\"MessageAttributes\":{\"eventType\":{\"DataType\":\"String\",\"StringValue\":\"{% $count($states.input.report.failedStores) > 0 ? 'PARTIAL' : 'SUCCESS' %}\"}},\"Subject\":\"{% '[AJE Price Monitor] Reporte ' & $states.input.report.date & ' - ' & ($count($states.input.report.failedStores) > 0 ? 'COMPLETADO CON ERRORES' : 'COMPLETADO') %}\"},\"Resource\":\"arn:"
+            - Ref: AWS::Partition
+            - :states:::sns:publish"},"Done":{"Type":"Succeed"},"NotifyReportFailure":{"QueryLanguage":"JSONata","Next":"ReportFailed","Type":"Task","Arguments":{"TopicArn":"
+            - Ref: NotificationTopicC6E25629
+            - "\",\"Message\":\"{% $join([\\n          'No se pudo generar el reporte de precios en Google Sheets.',\\n          '',\\n          'Fecha:      ' & $states.input.date,\\n          'Estado:     ERROR',\\n          'Error:      ' & $states.input.reportError.Error,\\n          'Detalle:    ' & $states.input.reportError.Cause,\\n          'Ejecución:  ' & $states.input.executionArn,\\n          '',\\n          $contains($states.input.reportError.Cause, 'invalid_grant')\\n            ? 'El refresh token de Google venció o fue revocado: regenéralo con npm run google-token y ejecuta npm run push-secrets.'\\n            : 'Revisa los logs de la Lambda report-generator en CloudWatch.'\\n        ], '\\\\n') %}\",\"MessageAttributes\":{\"eventType\":{\"DataType\":\"String\",\"StringValue\":\"ERROR\"}},\"Subject\":\"{% '[AJE Price Monitor] Reporte ' & $states.input.date & ' - ERROR' %}\"},\"Resource\":\"arn:"
+            - Ref: AWS::Partition
+            - :states:::sns:publish"},"ReportFailed":{"Type":"Fail","Error":"ReportGenerationFailed","Cause":"GenerateReport falló; se notificó por SNS"}},"TimeoutSeconds":900}
+      LoggingConfiguration:
+        Destinations:
+          - CloudWatchLogsLogGroup:
+              LogGroupArn:
+                Fn::GetAtt:
+                  - OrchestrationStateMachineLogs88355EE2
+                  - Arn
+        IncludeExecutionData: true
+        Level: ALL
+      RoleArn:
+        Fn::GetAtt:
+          - OrchestrationStateMachineRoleBF95AA8D
+          - Arn
+      StateMachineName: price-monitor
+      StateMachineType: STANDARD
+      Tags:
+        - Key: Owner
+          Value: Liliana
+        - Key: Project
+          Value: price-monitor
+      TracingConfiguration:
+        Enabled: true
+    DependsOn:
+      - OrchestrationStateMachineRoleDefaultPolicy8565569C
+      - OrchestrationStateMachineRoleBF95AA8D
+    UpdateReplacePolicy: Delete
+    DeletionPolicy: Delete
+    Metadata:
+      aws:cdk:path: PriceMonitorStack/Orchestration/StateMachine/Resource
+  OrchestrationDailySchedule0F39DE88:
+    Type: AWS::Scheduler::Schedule
+    Properties:
+      Description: Ejecuta el monitoreo de precios todos los días a las 08:00 (Lima)
+      FlexibleTimeWindow:
+        Mode: "OFF"
+      Name: price-monitor-daily
+      ScheduleExpression: cron(0 8 * * ? *)
+      ScheduleExpressionTimezone: America/Lima
+      State: ENABLED
+      Target:
+        Arn:
+          Ref: OrchestrationStateMachine4A805A55
+        Input: "{}"
+        RetryPolicy:
+          MaximumEventAgeInSeconds: 86400
+          MaximumRetryAttempts: 185
+        RoleArn:
+          Fn::GetAtt:
+            - SchedulerRoleForTargetabe3613E60E787
+            - Arn
+    Metadata:
+      aws:cdk:path: PriceMonitorStack/Orchestration/DailySchedule/Resource
+  SchedulerRoleForTargetabe3613E60E787:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Statement:
+          - Action: sts:AssumeRole
+            Condition:
+              StringEquals:
+                aws:SourceAccount:
+                  Ref: AWS::AccountId
+                aws:SourceArn:
+                  Fn::Join:
+                    - ""
+                    - - "arn:aws:scheduler:us-east-1:"
+                      - Ref: AWS::AccountId
+                      - :schedule-group/default
+            Effect: Allow
+            Principal:
+              Service: scheduler.amazonaws.com
+        Version: "2012-10-17"
+      Tags:
+        - Key: Owner
+          Value: Liliana
+        - Key: Project
+          Value: price-monitor
+    Metadata:
+      aws:cdk:path: PriceMonitorStack/SchedulerRoleForTarget-abe361/Resource
+  SchedulerRoleForTargetabe361DefaultPolicy80077973:
+    Type: AWS::IAM::Policy
+    Properties:
+      PolicyDocument:
+        Statement:
+          - Action: states:StartExecution
+            Effect: Allow
+            Resource:
+              Ref: OrchestrationStateMachine4A805A55
+        Version: "2012-10-17"
+      PolicyName: SchedulerRoleForTargetabe361DefaultPolicy80077973
+      Roles:
+        - Ref: SchedulerRoleForTargetabe3613E60E787
+    Metadata:
+      aws:cdk:path: PriceMonitorStack/SchedulerRoleForTarget-abe361/DefaultPolicy/Resource
+  CDKMetadata:
+    Type: AWS::CDK::Metadata
+    Properties:
+      Analytics: v2:deflate64:H4sIAAAAAAAA/+1Y3U8bORD/W5pHZPZauNPp+rZ8VZwCpCxqHxBCjneSGLz24o9AGvG/39hrbwzpcX24XsspEmLj8Xg+fjO2x7NT7Py+U7x9Q+/NNqtvtwUfF8vKUnZLkHS9NLvFcs+xW7CXy8FYKHY7cmPBWckYGDN4P9gakAFIphet5Uoiodq9PilPyw+HB2FmojSDqhoO3lvtgAwEnwBbMAHnTgAKQLG8DnIer8hAQ6PmVIwUqlggtQZjtVqgJOqsOgABFs7GN8Cs6QQ+kuWA1vUwl/pEKAkWbg2uUPz+RPa+NPyBe3Nzx73H6HCYMkXHWq7pRUHdVGelxyUMkxO9ln7+W3V1CxB9Cw3IXNUeNXAZPem8IcY0PlKay+mIatqghRp1ten3KX5ifBBFpnkKkKeYsO4TFS7xWA7aR89SWVNdR0d6yagPzVxeqJYz1GL9N9fATSvooqd0qwM3qdy4V5+W9olTt4pLG4etVlYxJXAIDeUCSRMuUHufD1vPSJ+5nZ1gItIp7Kl60ftL6yFY5ProIHroE+VHqQ5g5DA8EqGmCOdQTT9o5VqERSPKsovQu1//fiN4N74Pq4i2ZFH91tXBv+QL+kabcU2vparhxhSn4XPkJIsJgCJ1gmuG2SZC4n09T7VD/b09VLMZt7gJnV6lbQPKpSg2aKFeVPxLP60pw0THUYnq54Ak9HOKpCOlG+rX/VmdnXbkYH6fHnOulfTbMFLGDk0NsvyGlnyySEeaUQ7PuBPaJoKlegppHTxgMkgqTlTdnXjdqcQQlpSY+d8GHoRkg8MmTTZp8i+kySZZVslyRTjFkulcCcBbiBrjGqj3Fl54i9UQ4y0VWNYq1+vvePyCkvUIIdoNlXjr1+Ei5LGIzWmLUkfeq1ifXqhRUpGuz8tlnLVYbc+OJToK/VxX4v3T5Mty//cObtz/78F5pf7+oFmN6GX19E8IeyjdvTYSX6veiLTgQvmZNTnr5LrOHq05Nuvk7y3/51L7Kqx5DZ523YiQoo/E7F7jNgFritJ/4oOzWCJLemeSwzmurlKZ0GIV4XsPeZUwppbNssKloQ97noSsn7ms1f2Kvq8kc1qD7DsBGlqlbeA/RkuPKBdYIZlUjoCkYwF1qkdWtqSbI/USzJPRYd5I66orqzkzqH/Cp6tWxZwb5Am3EZZy2WyH07rviNmdKZahJ4E43PlvdjA9beB9rF7s4PVdgRForpKP3qQxF9wuLrL6sLMnqCXhf98TCyaYJ8dQxvBImFCuvvf4FstSUN34ms1/8/PUjw/WKtgONH/G3lMt0fsEchp+2kk3vZ1h0GZKJC+YalqquVHyrAVNrdJ9CKlwdOV1Emk1UHvCjUG5B9RSJEtl95AaEmkQ8zl4kA70VUIHMsbGQjuJiYtRGmFyEwwc8VlFKscYQE3CljgJYn0ITTbMIMnJF4vWk6uL8vSgPD8I1f4Ey2ivJmtZPa3nY/l+mBI4dm2VB3EZWj5c0gxsgcntu2blcIgjvJyEq+HwAZjzTB0koVHbX2F+t3/1Gn0lE103L8P5WQCvLTW3GMZ9KkR5byrQc86ADMMhdSzn6hZIdYd0Wcf+IamkCW11M0NZbAb+2aKLZRV/+nDHny93dSNTCuXqtItGx3mMxb4zVjXn0D2kwiYMlUAkPJsf+SOnBu3b0CScuei/f9KR1YKJPHO2dfaR+MZfcWN+me+8Ld79Ufz25sZwvh3flcV59/0LhdUhoHkYAAA=
+    Metadata:
+      aws:cdk:path: PriceMonitorStack/CDKMetadata/Default
+Outputs:
+  StateMachineArn:
+    Value:
+      Ref: OrchestrationStateMachine4A805A55
+  DlqUrl:
+    Value:
+      Ref: AlertingScrapingErrorsDlq34A02BD3
+  BucketName:
+    Value:
+      Ref: StorageDataBucketB1B922FA
+  TopicArn:
+    Value:
+      Ref: NotificationTopicC6E25629
+Parameters:
+  BootstrapVersion:
+    Type: AWS::SSM::Parameter::Value<String>
+    Default: /cdk-bootstrap/hnb659fds/version
+    Description: Version of the CDK Bootstrap resources in this environment, automatically retrieved from SSM Parameter Store. [cdk:skip]
+

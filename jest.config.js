@@ -5,5 +5,6 @@ module.exports = {
   transform: {
     '^.+\\.tsx?$': ['@swc/jest']
   },
+  setupFiles: ['<rootDir>/test/setup-env.ts'],
   setupFilesAfterEnv: ['aws-cdk-lib/testhelpers/jest-autoclean'],
 };

@@ -1,0 +1,33 @@
+[
+ {
+  "productId": "10451",
+  "productName": "Bloqueador Solar mineral diario SPF 30 Badger",
+  "brand": "BADGER",
+  "link": "https://www.florayfauna.pe/bloqueador-solar-mineral-diario-spf-30-badger/p",
+  "linkText": "bloqueador-solar-mineral-diario-spf-30-badger",
+  "categories": [
+   "/Cuidado Personal/Cuidado Corporal/Protección Solar/",
+   "/Cuidado Personal/Cuidado Corporal/",
+   "/Cuidado Personal/"
+  ],
+  "items": [
+   {
+    "itemId": "10459",
+    "name": "Bloqueador Solar Spf 30 Badger",
+    "sellers": [
+     {
+      "sellerId": "1",
+      "commertialOffer": {
+       "Price": 100.85,
+       "ListPrice": 100.85,
+       "PriceWithoutDiscount": 100.85,
+       "Tax": 18.15,
+       "AvailableQuantity": 10,
+       "IsAvailable": true
+      }
+     }
+    ]
+   }
+  ]
+ }
+]

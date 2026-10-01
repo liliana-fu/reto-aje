@@ -1,0 +1,50 @@
+{
+  "stores": [
+    {
+      "id": "dermashop",
+      "name": "Dermashop",
+      "baseUrl": "https://dermashop.pe/"
+    },
+    {
+      "id": "florayfauna",
+      "name": "Flora y Fauna",
+      "baseUrl": "https://www.florayfauna.pe/cuidado-personal/cuidado-corporal",
+      "params": {
+        "igvRate": 0.18
+      }
+    },
+    {
+      "id": "inkafarma",
+      "name": "Inkafarma",
+      "baseUrl": "https://inkafarma.pe/categoria/dermatologia-cosmetica",
+      "params": {
+        "algoliaAppId": "15W622LAQ4",
+        "algoliaApiKey": "3ba15abece13b00b123c5501680690f7",
+        "algoliaIndex": "products"
+      }
+    }
+  ],
+  "products": [
+    {
+      "grupo": "Protector solar facial",
+      "items": [
+        {
+          "store": "florayfauna",
+          "url": "https://www.florayfauna.pe/bloqueador-solar-mineral-diario-spf-30-badger/p",
+          "contenido": {
+            "valor": 118,
+            "unidad": "ml"
+          }
+        },
+        {
+          "store": "dermashop",
+          "url": "https://dermashop.pe/collections/proteccion-solar-facial/products/eucerin-sun-gel-crema-oil-control-toque-seco-spf50-50-ml"
+        },
+        {
+          "store": "inkafarma",
+          "url": "https://inkafarma.pe/producto/protector-solar-eucerin-oil-control-toque-seco-fps/009064"
+        }
+      ]
+    }
+  ]
+}

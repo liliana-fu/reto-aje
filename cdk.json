@@ -1,5 +1,5 @@
 {
-  "app": "npx tsc && npx tsx bin/test-aje.ts",
+  "app": "npx tsc && npx tsx bin/app.ts",
   "watch": {
     "include": [
       "**"
@@ -105,6 +105,10 @@
     "@aws-cdk/core:validateSnapshotRemovalPolicy": true,
     "@aws-cdk/custom-resources:logApiResponseDataPropertyTrueDefault": false,
     "@aws-cdk/customresources:installLatestAwsSdkDefault": false,
-    "@aws-cdk/s3-notifications:addS3TrustKeyPolicyForSnsSubscriptions": true
+    "@aws-cdk/s3-notifications:addS3TrustKeyPolicyForSnsSubscriptions": true,
+    "notificationEmails": [
+      "oscar.toledo@ajegroup.com",
+      "lilianafuye@gmail.com"
+    ]
   }
 }
